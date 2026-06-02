@@ -1,0 +1,13 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+chroma_db/
+casos_escalados.json
+
+# Entorno (secretos / API keys)
+.env
+
+# Node / frontend
+node_modules/
+dist/

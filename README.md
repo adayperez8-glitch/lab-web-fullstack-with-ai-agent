@@ -241,3 +241,73 @@ lab-web-fullstack-with-ai-agent/
 - Añade un selector de `session_id` para que el usuario pueda tener varias conversaciones
 - Muestra el historial de conversaciones al volver a cargar la página (recuperar de `/api/chat/history`)
 - Añade un botón "Nueva conversación" que limpie el estado y genere un nuevo `session_id`
+
+---
+
+## Cómo ejecutar este proyecto
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate        # Windows (PowerShell: venv\Scripts\Activate.ps1)
+pip install -r requirements.txt
+
+# Configura el entorno
+copy .env.example .env       # y rellena GROQ_API_KEY con una clave válida
+
+# (Solo la primera vez, si no existe chroma_db/) indexa las políticas para el RAG:
+python ingestar.py
+
+uvicorn main:app --reload    # http://localhost:8000  (docs en /docs)
+```
+
+> **Nota:** el `chroma_db/` con las políticas ya viene indexado. Necesitas una
+> `GROQ_API_KEY` **válida** en `backend/.env` para que el agente responda
+> (la clave de ejemplo del D1 puede estar caducada).
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+copy .env.example .env       # VITE_API_URL=http://localhost:8000
+npm run dev                  # http://localhost:5173
+```
+
+Abre `http://localhost:5173` → te redirige a `/login`. Entra con cualquier email
+y la contraseña `demo-token-12345` (el `DEMO_TOKEN`).
+
+### Endpoints del backend
+
+| Método | Ruta                 | Auth | Descripción                                  |
+|--------|----------------------|------|----------------------------------------------|
+| POST   | `/auth/login`        | No   | Devuelve el token si la password = DEMO_TOKEN |
+| POST   | `/api/chat`          | Sí   | Respuesta completa del agente                |
+| POST   | `/api/chat/stream`   | Sí   | Respuesta en streaming (SSE), token a token  |
+| GET    | `/api/chat/history`  | Sí   | Historial de una sesión (`?session_id=...`)  |
+
+### Arquitectura
+
+```
+backend/
+├── main.py            CORS + auth + endpoints (chat, stream, history, login)
+├── agent/             agente LangGraph + RAG (Chroma) reutilizado del D1
+│   ├── __init__.py
+│   └── graph.py
+├── chroma_db/         vector store ya indexado (políticas)
+├── ingestar.py        re-indexa politicas.txt en chroma_db
+├── politicas.txt      base de conocimiento del RAG
+├── requirements.txt
+└── .env.example
+
+frontend/
+├── src/
+│   ├── api/{client.js, auth.js}        axios + interceptores + token
+│   ├── context/AuthContext.jsx         login / logout / isAuth
+│   ├── components/{Chat.jsx, ProtectedRoute.jsx}
+│   ├── pages/{LoginPage.jsx, ChatPage.jsx}
+│   └── App.jsx                          rutas
+└── .env.example
+```
